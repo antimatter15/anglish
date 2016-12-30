@@ -1,0 +1,116 @@
+<body>
+<script src="codemirror.js"></script>
+<link rel="stylesheet" href="codemirror.css">
+<style>
+.CodeMirror {
+    font-family: Avenir, sans-serif;
+    color: black;
+    font-size: 20pt;
+    line-height: 2em;
+
+    position: absolute;
+    overflow: hidden;
+    background: white;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.CodeMirror-lines {
+    padding: 50px 0;
+}
+
+.CodeMirror pre {
+    padding: 0 100px;
+}
+
+.unknown {
+	color: red;
+}
+
+
+.interlinear {
+    font-size: small;
+    margin-top: -1em;
+    line-height: 1em;
+    color: #585858;
+    z-index: 1;
+}
+
+</style>
+<script src="dictionary.js"></script>
+<script src="words.js"></script>
+<script type="text/javascript">
+var cm = CodeMirror(document.body, {
+	value: localStorage.anglish || "hello world\n",
+	singleCursorHeightPerLine: false,
+	lineWrapping: true
+});
+
+var widgets = [];
+
+
+dictionary.forEach(function(word){
+	[word.Attested, word.Unattested].map(cleanup).join(', ').split(',').forEach(function(thing){
+		known_words[thing.trim().toLowerCase()] = 1;
+	})
+})
+
+function cleanup(s){
+	return s.replace(/\s+/g, ' ').replace(/\(.*?\)/g, '')
+}
+
+cm.on('change', function(){
+	render()
+	localStorage.anglish = cm.getValue()
+})
+
+function render(){
+	cm.getAllMarks()
+		.filter(function(k){return k._inline})
+		.forEach(function(k){k.clear()})
+
+	var w;
+	while(w = widgets.pop()){
+		w.parentNode.removeChild(w);
+	}
+
+	var lineNo = 0;
+	cm.eachLine(function(line){
+
+		var re = /([\w']+)/g;
+		var m;
+		while (m = re.exec(line.text)) {
+			// console.log(m[1], m.index);
+
+			var word = m[1].toLowerCase();
+			if(!(word in known_words) && !((word + 's') in known_words)&& !((word.replace(/s$/, '')) in known_words)&& !((word.replace(/d$/, '')) in known_words) && !((word.replace(/ed$/, '')) in known_words)&& !((word.replace(/^un/, '')) in known_words) ){
+
+
+				var mark = cm.markText({ line: lineNo, ch: m.index }, { line: lineNo, ch: m.index + word.length }, {
+					className: 'unknown'
+				})
+				mark._inline = true;
+
+
+				var match = dictionary.find(function(k){ return k.English == word })
+
+				if(match){
+					var node = document.createElement('div')
+					node.className = "interlinear"
+					node.innerHTML = [match.Attested, match.Unattested].map(cleanup).join(', ')
+
+					widgets.push(node)
+					cm.addWidget({ line: lineNo, ch: m.index }, node)	
+				}
+			}
+		}
+
+		lineNo++
+	})
+
+}
+render()
+
+</script>

@@ -35,12 +35,21 @@
     margin-top: -0.85em;
     line-height: 1em;
     color: #585858;
-    z-index: 1;
+    z-index: 2;
 }
 
+.interlinear a {
+	text-decoration: none;
+	color: inherit;
+}
+
+.interlinear a:hover {
+	text-decoration: underline;
+}
 </style>
 <script src="dictionary.js"></script>
 <script src="words.js"></script>
+<script src="domreplace.js"></script>
 <script type="text/javascript">
 var cm = CodeMirror(document.body, {
 	value: localStorage.anglish || "to be or not to be that is the question\n",
@@ -101,6 +110,26 @@ function render(){
 					node.className = "interlinear"
 					node.innerHTML = [match.Attested, match.Unattested].map(cleanup).join(', ')
 
+					node.setAttribute('cm-ignore-events', 'true')
+
+					findAndReplaceDOMText(node, {
+					  find: /\w+/g,
+					  replace: function(portion, match) {
+					    // return '[[' + portion.index + ']]';
+					    var link = document.createElement('a')
+					    link.href = 'javascript:void(0)'
+					    link.onclick = function(){
+					    	cm.replaceRange(
+					    		match,
+					    		mark.find().from,
+					    		mark.find().to
+					    	)
+					    }
+					    link.innerText = match;
+					    return link
+					  }
+					  // wrap: 'em'
+					});
 					widgets.push(node)
 					cm.addWidget({ line: lineNo, ch: m.index }, node)	
 				}
